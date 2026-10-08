@@ -1,7 +1,7 @@
-SYNTHETIC
-generated: 2026-10-08 21:27
-by: scripts/make_synthetic.py
+NUBRA-PROD
+fetched: 2026-10-08 21:36
+by: scripts/fetch_data.py (Nubra Python SDK, historical_data 1d)
 range: 2025-07-01 to 2026-06-30
-symbols: 53
+symbols: 52
 public set (students)
-NOT real prices. Geometric random walks for pipeline testing only.
+Prices in rupees (paise/100), unadjusted; dates are IST trading days.
