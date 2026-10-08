@@ -1,0 +1,6 @@
+.env
+auth_data.db*
+prod/
+__pycache__/
+*.pyc
+cache/_live.csv

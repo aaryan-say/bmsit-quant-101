@@ -1,0 +1,21 @@
+{
+  "source": "NUBRA-PROD",
+  "built_at": "2026-10-08 22:17",
+  "symbols": [
+    "AXISBANK",
+    "BHARTIARTL",
+    "ETERNAL",
+    "HDFCBANK",
+    "HINDUNILVR",
+    "ICICIBANK",
+    "INFY",
+    "ITC",
+    "KOTAKBANK",
+    "LT",
+    "MARUTI",
+    "RELIANCE",
+    "SBIN",
+    "TCS"
+  ],
+  "notes": "daily candles via historical_data(), interval 1d, intraDay False, paise/100"
+}
