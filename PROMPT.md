@@ -11,6 +11,19 @@ The engine and the data live at https://github.com/aaryan-say/bmsit-quant-101 (R
 You are writing ONE Python file for a small, strict daily-bar backtesting engine. Follow this contract
 exactly; the file must plug in with zero edits.
 
+## Scope: what this engine can and cannot test (read before writing anything)
+It backtests CASH-MARKET STOCK strategies only: one stock at a time, long / flat / short, on NIFTY 50
+stocks, daily or intraday bars. It CANNOT test:
+- options or futures (no option prices, strikes, expiries, legs, Greeks, premiums, straddles, spreads);
+- strategies that compare stocks with each other ("top 5 by momentum", pairs, sector rotation): the
+  function sees ONE stock's candles at a time;
+- portfolio sizing across stocks (capital is split equally; a strategy may only scale itself 0..1 per stock).
+If my idea needs any of those, do NOT improvise. Say in one or two plain sentences that this backtester
+handles cash-market stock strategies only, then propose the closest cash-market version of my idea
+(e.g. "buy the call when X" -> "go long the stock when X"; "sell a straddle in low volatility" -> "go
+long when the 20-day volatility is below its 100-day average"), ask me to confirm, and only then write
+the file. Any indicator, any rule, any timeframe is fine as long as it fits the one-stock contract below.
+
 ## Timeframe
 The file may declare `TIMEFRAME = "1d"` (default if absent), `"1h"`, `"30m"`, `"15m"`, `"5m"` or `"1m"`.
 Use daily unless the idea is genuinely intraday (opening range, time-of-day effects, "flat by the close").
