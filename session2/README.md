@@ -53,7 +53,7 @@ $py = "..\data\.venv\Scripts\python.exe"
 & $py common_login.py                       # login test: PROD (data) then UAT (orders); OTP on first use
 & $py common_login.py --prod-only           # just the data login
 
-& $py build_cache.py                        # presenter: ~70 PROD daily candles x 15 stocks -> cache\
+& $py build_cache.py                        # presenter: ~70 PROD daily candles x 14 stocks -> cache\
 & $py build_cache.py --synthetic            # anyone: fake practice data (clearly labelled), no login
 
 & $py screener.py --offline                 # no login: CHECKPOINTS 2-4 + 6 from cache

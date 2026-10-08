@@ -53,9 +53,9 @@ CACHE_DIR = os.path.join(HERE, "cache")
 META_FILE = os.path.join(CACHE_DIR, "_meta.json")
 LIVE_FILE = os.path.join(CACHE_DIR, "_live.csv")      # the live table, rewritten every refresh (dashboards read it)
 
-# 15 liquid NSE stocks. ETERNAL (Zomato) is in on purpose: PROD has its full history.
+# 14 liquid NSE stocks. ETERNAL (Zomato) is in on purpose: PROD has its full history.
 # ALTERNATES maps a symbol to a fallback name if the instruments master does not know it.
-WATCHLIST = ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "SBIN", "TATAMOTORS", "ITC",
+WATCHLIST = ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "SBIN", "ITC",
              "BHARTIARTL", "LT", "AXISBANK", "KOTAKBANK", "HINDUNILVR", "MARUTI", "ETERNAL"]
 ALTERNATES = {}   # e.g. {"ETERNAL": "ZOMATO"} if a symbol was renamed
 
