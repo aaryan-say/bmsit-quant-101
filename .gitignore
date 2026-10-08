@@ -1,6 +1,9 @@
 # presenter-only out-of-sample data (never commit)
 data/hidden/
 
+# 1-minute bars: ~100k rows per symbol, too big for git; shipped separately as a zip (see README "Data")
+data/1m/
+
 # generated at run time
 results/
 __pycache__/

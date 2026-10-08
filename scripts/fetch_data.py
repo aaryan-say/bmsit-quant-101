@@ -1,19 +1,24 @@
-"""PRESENTER ONLY: replace the synthetic data with real NSE daily candles from Nubra PROD.
+"""PRESENTER ONLY: replace the synthetic data with real NSE candles from Nubra PROD.
 
-    python scripts\\fetch_data.py --env-dir <folder with .env and auth_data.db*>
-    python scripts\\fetch_data.py                   # same, using the repo root as env-dir
-    python scripts\\fetch_data.py --resolve-only    # just check which symbols the instruments master knows
+    python scripts\\fetch_data.py --env-dir <folder with .env and auth_data.db*>              # daily (1d)
+    python scripts\\fetch_data.py --env-dir <folder> --interval 15m                           # one timeframe
+    python scripts\\fetch_data.py --resolve-only                # just check which symbols the master knows
 
 Needs:  pip install nubra-sdk pandas   and a Nubra PROD login. The SDK keeps its token in auth_data.db*
 and reads PHONE_NO / MPIN from .env, both in the CURRENT WORKING DIRECTORY, so this script chdir()s to
 --env-dir first. First-ever login asks phone -> OTP (SMS) -> MPIN interactively; later runs only need the
 MPIN (from .env or typed). Secrets are never printed.
 
-Writes  data/daily/<SYMBOL>.csv   (2025-07-01 .. 2026-06-30, public)
-        data/hidden/<SYMBOL>.csv  (2025-07-01 .. 2026-09-30, git-ignored; scored from 2026-07-01)
-        _SOURCE.txt = NUBRA-PROD + fetch date in both folders.
-API facts used (SDK docs): historical_data(type STOCK|INDEX, interval 1d, values <= 5 symbols per call,
-UTC ISO dates, prices in paise, 60 requests/minute).
+Layout written (see scripts/universe.py::data_folders):
+    1d     data/daily/<SYMBOL>.csv        2025-07-01..2026-06-30 (public)
+           data/hidden/<SYMBOL>.csv       2025-07-01..2026-09-30 (git-ignored; scored from 2026-07-01)
+    other  data/<tf>/<SYMBOL>.csv.gz      2025-09-04..2026-06-30 (public; PROD keeps intraday from 2025-09-04)
+           data/hidden/<tf>/<SYMBOL>.csv.gz  2025-09-04..2026-09-30 (git-ignored; scored from 2026-07-01)
+Each folder gets _SOURCE.txt (NUBRA-PROD + fetch date); hidden folders also get _EVAL_START.txt.
+Columns: date,open,high,low,close,volume (intraday files also have a leading datetime column, IST).
+API facts used (SDK docs + PROD checks on 2026-10-08): historical_data(type STOCK|INDEX, values <= 5
+symbols per call, UTC ISO dates, prices in paise, 60 requests/minute, one call returns a whole window
+even for 1m; intraday volume is cumulative within the day).
 """
 import argparse
 import glob
@@ -27,8 +32,8 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from universe import (HIDDEN_END, HIDDEN_START, INDEX_SYMBOL, NIFTY50,  # noqa: E402
-                      PUBLIC_END, PUBLIC_START)
+from universe import (BAR_MINUTES, HIDDEN_END, HIDDEN_START, INDEX_SYMBOL, INTERVALS,  # noqa: E402
+                      INTRADAY_START, NIFTY50, PUBLIC_END, PUBLIC_START, SESSION_MINUTES, data_folders)
 
 for _s in (sys.stdout, sys.stderr):   # SDK prints emoji; avoid cp1252 crashes on Windows
     try:
@@ -36,10 +41,9 @@ for _s in (sys.stdout, sys.stderr):   # SDK prints emoji; avoid cp1252 crashes o
     except Exception:
         pass
 
-BATCH = 5                  # docs: values supports up to 5 instruments per request
 MIN_GAP_S = 1.1            # docs: 60 historical requests per minute
 FIELDS = ["open", "high", "low", "close", "cumulative_volume"]
-MIN_STOCKS_TO_WRITE = 30   # refuse to wipe the synthetic set if the fetch clearly failed
+MIN_STOCKS_TO_WRITE = 30   # refuse to wipe an existing dataset if the fetch clearly failed
 
 
 # ----------------------------------------------------------------------------- login
@@ -110,11 +114,11 @@ class Throttle:
         self.last = time.time()
 
 
-def fetch_batch(md, throttle, kind, symbols, start, end):
-    """One historical_data call (<= 5 symbols, one date window). Returns {symbol: DataFrame}."""
+def fetch_batch(md, throttle, kind, symbols, start, end, interval):
+    """One historical_data call (<= 5 symbols, one date window). Returns {symbol: DataFrame} with IST index."""
     req = {"exchange": "NSE", "type": kind, "values": symbols, "fields": FIELDS,
            "startDate": f"{start}T00:00:00.000Z", "endDate": f"{end}T23:59:59.000Z",
-           "interval": "1d", "intraDay": False, "realTime": False}
+           "interval": interval, "intraDay": False, "realTime": False}
     out = {}
     for attempt in range(3):
         throttle.wait()
@@ -133,84 +137,115 @@ def fetch_batch(md, throttle, kind, symbols, start, end):
                     continue
                 df = pd.DataFrame({"open": _series(sc.open), "high": _series(sc.high), "low": _series(sc.low),
                                    "close": _series(sc.close), "volume": _series(sc.cumulative_volume)})
-                df.index = df.index.tz_convert("Asia/Kolkata").normalize().tz_localize(None)  # IST trading day
+                df.index = df.index.tz_convert("Asia/Kolkata").tz_localize(None)   # IST bar start
+                if interval == "1d":
+                    df.index = df.index.normalize()                                # IST trading day
                 out[sym.upper()] = df
     return out
 
 
-def fetch_all(md, kind, symbols):
-    """Daily candles for the full window, fetched per batch of 5 and per sub-window (public, hidden)."""
+def fetch_all(md, kind, symbols, interval, batch_size):
+    """Candles for the full window, fetched per batch and per sub-window (public, hidden)."""
     throttle, frames = Throttle(), {}
-    windows = [(PUBLIC_START, PUBLIC_END), (HIDDEN_START, HIDDEN_END)]
-    for i in range(0, len(symbols), BATCH):
-        batch = symbols[i:i + BATCH]
+    first = PUBLIC_START if interval == "1d" else INTRADAY_START
+    windows = [(first, PUBLIC_END), (HIDDEN_START, HIDDEN_END)]
+    for i in range(0, len(symbols), batch_size):
+        batch = symbols[i:i + batch_size]
         for start, end in windows:
-            got = fetch_batch(md, throttle, kind, batch, start, end)
+            got = fetch_batch(md, throttle, kind, batch, start, end, interval)
             for sym, df in got.items():
                 frames[sym] = pd.concat([frames[sym], df]) if sym in frames else df
-            print(f"  {kind} batch {i // BATCH + 1}: {start}..{end}: "
+            print(f"  {kind} {interval} batch {i // batch_size + 1}: {start}..{end}: "
                   + ", ".join(f"{s}={len(got[s]) if s in got else 0}" for s in batch))
     clean = {}
     for sym, df in frames.items():
         df = df[~df.index.duplicated(keep="last")].sort_index()
-        df = df[(df.index >= PUBLIC_START) & (df.index <= HIDDEN_END)]
+        df = df[(df.index >= pd.Timestamp(first)) & (df.index < pd.Timestamp(HIDDEN_END) + pd.Timedelta(days=1))]
         for c in ("open", "high", "low", "close"):
             df[c] = (df[c] / 100.0).round(2)                      # paise -> rupees
-        df["volume"] = df["volume"].fillna(0).astype("int64")
-        df.index.name = "date"
-        clean[sym] = df.reset_index()
+        vol = df["volume"].fillna(0)
+        if interval != "1d":
+            # docs: sub-daily cumulative_volume must be differenced. It resets each day, so a negative
+            # diff (or the first row) means "first bar of the day": use the raw cumulative value there.
+            d = vol.diff()
+            vol = d.where(d >= 0, vol).fillna(vol)
+        df["volume"] = vol.astype("int64")
+        df.index.name = "datetime" if interval != "1d" else "date"
+        df = df.reset_index()
+        if interval != "1d":
+            df.insert(1, "date", df["datetime"].dt.normalize())
+        clean[sym] = df
     return clean
 
 
 # ----------------------------------------------------------------------------- write
-def write_set(frames, folder, start, end, label, fetched):
+def write_set(frames, folder, ext, start, end, label, fetched, interval):
     os.makedirs(folder, exist_ok=True)
-    for f in os.listdir(folder):                                   # remove synthetic / stale files
-        if f.endswith(".csv") or f.startswith("_"):
+    for f in os.listdir(folder):                                   # remove synthetic / stale files (not subfolders)
+        if f.endswith(".csv") or f.endswith(".csv.gz") or f.startswith("_"):
             os.remove(os.path.join(folder, f))
+    size = 0
     for sym, df in frames.items():
-        part = df[(df["date"] >= start) & (df["date"] <= end)].copy()
+        part = df[(df["date"] >= pd.Timestamp(start)) & (df["date"] <= pd.Timestamp(end))].copy()
         part["date"] = part["date"].dt.strftime("%Y-%m-%d")
-        part.to_csv(os.path.join(folder, f"{sym}.csv"), index=False)
+        if "datetime" in part:
+            part["datetime"] = part["datetime"].dt.strftime("%Y-%m-%d %H:%M")
+        p = os.path.join(folder, f"{sym}{ext}")
+        part.to_csv(p, index=False, compression="gzip" if ext.endswith(".gz") else None)
+        size += os.path.getsize(p)
     with open(os.path.join(folder, "_SOURCE.txt"), "w", encoding="utf-8") as f:
-        f.write(f"NUBRA-PROD\nfetched: {fetched}\nby: scripts/fetch_data.py (Nubra Python SDK, historical_data 1d)\n"
-                f"range: {start} to {end}\nsymbols: {len(frames)}\n{label}\n"
-                "Prices in rupees (paise/100), unadjusted; dates are IST trading days.\n")
+        f.write(f"NUBRA-PROD\nfetched: {fetched}\nby: scripts/fetch_data.py (Nubra Python SDK, historical_data {interval})\n"
+                f"interval: {interval}\nrange: {start} to {end}\nsymbols: {len(frames)}\n{label}\n"
+                "Prices in rupees (paise/100), unadjusted; timestamps are IST (bar start).\n")
+    return size
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--env-dir", default=ROOT, help="folder holding .env and auth_data.db* (default: repo root)")
+    ap.add_argument("--interval", default="1d", choices=INTERVALS, help="candle size (default 1d)")
+    ap.add_argument("--batch", type=int, default=None,
+                    help="symbols per request (default: 5 for 1d, 1 for intraday; docs max 5)")
     ap.add_argument("--resolve-only", action="store_true", help="only report which symbols resolve")
     a = ap.parse_args()
+    iv = a.interval
+    batch = a.batch or (5 if iv == "1d" else 1)
+    batch = max(1, min(5, batch))
     nubra = connect(a.env_dir)
     stocks, _missing = resolve(nubra)
     if a.resolve_only:
         return
     from nubra_python_sdk.marketdata.market_data import MarketData
     md = MarketData(nubra)
-    print(f"\nfetching {len(stocks)} stocks + {INDEX_SYMBOL} ({PUBLIC_START}..{HIDDEN_END}), ~1.1 s per request")
-    frames = fetch_all(md, "STOCK", stocks)
-    frames.update(fetch_all(md, "INDEX", [INDEX_SYMBOL]))
-    print("\nrows per symbol (expect ~310 for the full window):")
+    first = PUBLIC_START if iv == "1d" else INTRADAY_START
+    n_req = 2 * (-(-len(stocks) // batch) + 1)
+    print(f"\nfetching {len(stocks)} stocks + {INDEX_SYMBOL} at {iv} ({first}..{HIDDEN_END}), "
+          f"{n_req} requests at 1.1 s apart (~{n_req * 1.1 / 60:.1f} min)")
+    frames = fetch_all(md, "STOCK", stocks, iv, batch)
+    frames.update(fetch_all(md, "INDEX", [INDEX_SYMBOL], iv, 1))
+    bars_per_day = 1 if iv == "1d" else -(-SESSION_MINUTES // BAR_MINUTES[iv])
+    expected = bars_per_day * (310 if iv == "1d" else 265)        # trading days in the full window
+    print(f"\nrows per symbol (expect ~{expected} for the full window):")
     bad = []
     for sym in sorted(frames):
         df = frames[sym]
         rng = f"{df['date'].min():%Y-%m-%d}..{df['date'].max():%Y-%m-%d}"
-        flag = "" if len(df) >= 280 and df["date"].max() >= pd.Timestamp(HIDDEN_END) - pd.Timedelta(days=7) else "  <-- CHECK"
-        print(f"  {sym:<12}{len(df):>5}  {rng}{flag}")
+        ok = len(df) >= 0.6 * expected and df["date"].max() >= pd.Timestamp(HIDDEN_END) - pd.Timedelta(days=7)
+        flag = "" if ok else "  <-- CHECK"
+        print(f"  {sym:<12}{len(df):>7}  {rng}{flag}")
         if flag:
             bad.append(sym)
     n_stocks = len([s for s in frames if s != INDEX_SYMBOL])
     if n_stocks < MIN_STOCKS_TO_WRITE:
         sys.exit(f"\nOnly {n_stocks} stocks returned data; NOT overwriting the existing dataset.")
     fetched = datetime.now().strftime("%Y-%m-%d %H:%M")
-    daily, hidden = os.path.join(ROOT, "data", "daily"), os.path.join(ROOT, "data", "hidden")
-    write_set(frames, daily, PUBLIC_START, PUBLIC_END, "public set (students)", fetched)
-    write_set(frames, hidden, PUBLIC_START, HIDDEN_END, f"presenter set; judged from {HIDDEN_START}", fetched)
-    with open(os.path.join(hidden, "_EVAL_START.txt"), "w", encoding="utf-8") as f:
+    pub, hid, ext = data_folders(iv, ROOT)
+    s1 = write_set(frames, pub, ext, first, PUBLIC_END, "public set (students)", fetched, iv)
+    s2 = write_set(frames, hid, ext, first, HIDDEN_END, f"presenter set; judged from {HIDDEN_START}", fetched, iv)
+    with open(os.path.join(hid, "_EVAL_START.txt"), "w", encoding="utf-8") as f:
         f.write(HIDDEN_START + "\n")
-    print(f"\nwrote {len(frames)} symbols to {daily} and {hidden}  (_SOURCE.txt = NUBRA-PROD, {fetched})")
+    print(f"\nwrote {len(frames)} symbols at {iv}:\n  {pub}  ({s1 / 1e6:.1f} MB)\n  {hid}  ({s2 / 1e6:.1f} MB)"
+          f"\n  _SOURCE.txt = NUBRA-PROD, {fetched}")
     if bad:
         print(f"symbols flagged CHECK (short history or stale end date): {', '.join(bad)}")
     print("Next: python backtest.py --all   and   python tests\\test_engine.py")

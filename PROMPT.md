@@ -9,16 +9,33 @@ with YOUR strategy idea, save the reply as `strategies\<short_name>.py`, and run
 You are writing ONE Python file for a small, strict daily-bar backtesting engine. Follow this contract
 exactly; the file must plug in with zero edits.
 
+## Timeframe
+The file may declare `TIMEFRAME = "1d"` (default if absent), `"1h"`, `"30m"`, `"15m"`, `"5m"` or `"1m"`.
+Use daily unless the idea is genuinely intraday (opening range, time-of-day effects, "flat by the close").
+Daily data covers about 250 trading days; intraday data starts 2025-09-04 (about 200 days). Intraday means
+far more bars, so far more trades, and every trade costs Rs 20 + 0.05%: an idea that flips every bar loses.
+
 ## Data you receive
-`strategy(df)` is called once per stock (NIFTY 50 names, about 250 trading days) with a pandas DataFrame
-`df` sorted by date ascending, default RangeIndex (0..n-1), columns:
+`strategy(df)` is called once per stock (NIFTY 50 names) with a pandas DataFrame `df` sorted by time
+ascending, default RangeIndex (0..n-1), one row per bar, columns:
 
 | column | type | meaning |
 |---|---|---|
-| `date` | datetime64 | IST trading day |
+| `date` | datetime64 | IST trading day (on intraday data: the day the bar belongs to) |
+| `datetime` | datetime64 (intraday only) | IST bar start, e.g. 09:15, 09:30 ... 15:15 for 15m bars |
 | `open`, `high`, `low`, `close` | float | rupees |
-| `volume` | int | shares traded |
-| `nifty_close` | float (optional) | NIFTY index close that day; may be absent, check `'nifty_close' in df.columns` |
+| `volume` | int | shares traded in that bar |
+| `nifty_close` | float (optional) | NIFTY index close for the same bar; may be absent, check `'nifty_close' in df.columns` |
+
+Intraday helpers (all read the clock, never a future row):
+```python
+minute = df["datetime"].dt.hour * 60 + df["datetime"].dt.minute
+first_bar = minute == 9 * 60 + 15                      # first bar of the session
+late = minute >= 15 * 60                               # 15:00 onwards -> set 0 here to be flat by the close
+day_open = df.groupby("date")["open"].transform("first")
+day_high_so_far = df.groupby("date")["high"].cummax()  # running high within the day (past bars only)
+```
+Do NOT find "the last bar of the day" with `df["date"] != df["date"].shift(-1)`: that is a future row.
 
 ## What you must return
 A `pd.Series` of floats with the SAME index as `df` (same length, same order). Each value is the position
@@ -27,9 +44,10 @@ you want to hold for that stock after that day's close:
 - `+1.0` = fully long, `0.0` = flat, `-1.0` = fully short, fractions allowed (e.g. `0.5`); anything outside
   [-1, 1] is clipped.
 - NaN is treated as flat (0), so NaNs from rolling warm-up are fine.
-- The engine executes your position at the NEXT day's open. You never need to shift the result yourself.
+- The engine executes your position at the NEXT bar's open (next day for daily, next candle for
+  intraday). You never need to shift the result yourself.
 - Every symbol gets equal capital; costs are Rs 20 per order + 0.05% slippage per position change, so
-  flipping every day will lose money. Fewer, better trades win.
+  flipping every bar will lose money. Fewer, better trades win.
 
 ## Hard rules
 1. Only `pandas` and `numpy` (and the Python standard library). No other imports, no file or network access.
@@ -75,6 +93,7 @@ return pd.Series(pos, index=df.index)
 import numpy as np
 import pandas as pd
 
+TIMEFRAME = "1d"     # or "1h", "30m", "15m", "5m", "1m"
 WINDOW = 20          # constants at the top
 
 
@@ -120,6 +139,18 @@ def strategy(df):
     return pos
 ```
 
+Idea (intraday): "15-minute bars: if the first candle of the day closes green go long for the day, flat by the close"
+```python
+TIMEFRAME = "15m"
+
+def strategy(df):
+    minute = df["datetime"].dt.hour * 60 + df["datetime"].dt.minute
+    first_green = (minute == 9 * 60 + 15) & (df["close"] > df["open"])
+    pos = first_green.astype(float).groupby(df["date"]).cummax()   # stays 1 for the rest of that day
+    pos[minute >= 15 * 60] = 0.0                                    # 0 on the 15:00 bar -> out at 15:15 open
+    return pos
+```
+
 ## Output format
 Return ONLY the content of the Python file. No prose, no explanation, no markdown fences, no "Here is".
 The first line must be the docstring; the file must define `strategy(df)`.
@@ -134,6 +165,8 @@ the 20-day average and the close is up; exit after the close falls below the 10-
 
 1. `python backtest.py strategies\mine.py` and READ the scorecard: Sharpe, max drawdown, trades, exposure.
 2. Ask one question: too many trades (costs eating you)? too few (nothing to judge)? huge drawdown?
+   On intraday timeframes the trade count explodes: if the scorecard says a sleeve "went to zero",
+   costs ate the capital. Trade less often or go back to daily.
 3. Change ONE thing (a window, a threshold, long-only, add a filter). Re-run. Keep it only if Sharpe
    improved without the trade count collapsing below 10.
 4. If the engine says LOOK-AHEAD DETECTED, you are using future rows. Fix it, do not bypass it.

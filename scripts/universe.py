@@ -25,6 +25,22 @@ PUBLIC_START = "2025-07-01"
 PUBLIC_END = "2026-06-30"      # students see data up to here
 HIDDEN_START = "2026-07-01"    # out-of-sample window used for judging
 HIDDEN_END = "2026-09-30"
+INTRADAY_START = "2025-09-04"  # Nubra PROD keeps sub-daily candles only from this date (verified 2026-10-08)
+
+# Timeframes. Folder layout:  1d -> data/daily (public) + data/hidden (presenter), plain .csv
+#                             others -> data/<tf>/ (public) + data/hidden/<tf>/ (presenter), .csv.gz
+INTERVALS = ["1d", "1h", "30m", "15m", "5m", "1m"]
+BAR_MINUTES = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60}   # NSE session 09:15-15:30 = 375 minutes
+SESSION_OPEN_MIN = 9 * 60 + 15
+SESSION_MINUTES = 375
+
+
+def data_folders(interval, root):
+    """(public folder, hidden folder, file extension) for a timeframe."""
+    import os
+    if interval == "1d":
+        return os.path.join(root, "data", "daily"), os.path.join(root, "data", "hidden"), ".csv"
+    return os.path.join(root, "data", interval), os.path.join(root, "data", "hidden", interval), ".csv.gz"
 
 # Rough price levels (rupees) so synthetic charts look plausible. Only used by make_synthetic.py.
 APPROX_PRICE = {

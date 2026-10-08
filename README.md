@@ -24,27 +24,48 @@ for a leaderboard of every file in `strategies\`.
 Useful flags: `--long-only` (no shorts), `--start 2026-01-01 --end 2026-06-30` (score a window),
 `--no-plot`, `--json`, `--data <folder>`. `python backtest.py -h` lists them.
 
+## Timeframes: daily or intraday
+
+Your strategy file may declare `TIMEFRAME = "1d"` (the default when absent), `"1h"`, `"30m"`, `"15m"`,
+`"5m"` or `"1m"`. The engine then loads that folder (`data\daily` for 1d, `data\<tf>` otherwise), executes
+at the next *bar's* open, and annualises Sharpe/CAGR using bars per year (246 trading days x bars per day).
+The scorecard and the SUBMIT line show the timeframe; the hidden re-run uses the same one automatically
+(`--data data\hidden` picks `data\hidden\<tf>`).
+
+When intraday makes sense: ideas about the opening range, time of day, "flat before the close", or
+reacting within the day. When it does not: anything built on multi-day trends or averages, which is
+most ideas. Two facts to keep in mind:
+
+- Intraday data starts **2025-09-04** (that is as far back as the data source keeps sub-daily candles),
+  so you get about 200 days instead of 250.
+- More bars = more trades = costs matter much more. A 15-minute strategy that enters and exits daily on
+  all 52 stocks makes ~5,000 round trips in ten months; at Rs 20 + 0.05% a side that is a large chunk of
+  a Rs 19,000 sleeve. If the scorecard warns that sleeves "went to zero", costs ate the capital.
+  See `strategies\first_green_15m.py` for an intraday example that shows exactly this.
+
 ## The competition
 
 - **Time box: 25 minutes** from "go". Iterate as many times as you like inside it.
 - **Submit** your best SUBMIT line plus your `.py` file here: **[Google Form link - TBD]**.
 - **Judged on out-of-sample Sharpe.** The data you have ends 2026-06-30. The presenter holds a hidden
   set for **July to September 2026**. The top 5 by submitted Sharpe are re-run with
-  `python backtest.py strategies\x.py --data data\hidden` and ranked by the Sharpe on those three
-  months. A strategy needs **at least 10 trades** in the hidden window to be ranked.
+  `python backtest.py strategies\x.py --data data\hidden` (same timeframe as the file declares) and
+  ranked by the Sharpe on those three months. A strategy needs **at least 10 trades** in the hidden
+  window to be ranked.
 - Strategies that use future data are rejected by the engine (`LOOK-AHEAD DETECTED`) and by the judges.
 - Shorts are allowed (the engine assumes you can short any NIFTY 50 stock, which in real life means
   futures or intraday). If you would rather not, run with `--long-only`.
 
 ## What the engine does (so you can trust it)
 
-- **Universe:** every `data\daily\<SYMBOL>.csv` (NIFTY 50 constituents, daily OHLCV, one year to
-  2026-06-30). `NIFTY.csv` is the index: never traded, drawn as a reference line, and offered to your
-  strategy as the optional `nifty_close` column.
+- **Universe:** every `<SYMBOL>.csv` in the timeframe's folder (NIFTY 50 constituents; daily OHLCV for
+  one year to 2026-06-30, intraday from 2025-09-04). `NIFTY` is the index: never traded, drawn as a
+  reference line, and offered to your strategy as the optional `nifty_close` column.
 - **Equal weight:** Rs 10,00,000 split equally across symbols; each symbol's sleeve compounds on its own.
-- **Next-day execution:** your position for a row is computed from that day's data and executed at the
-  *next* day's open. Equity is marked at each open. There is no way to earn today's move from today's
-  signal. (`tests\test_engine.py` proves this with a planted price jump.)
+  A sleeve stops at zero (it cannot go negative); the scorecard warns when that happens.
+- **Next-bar execution:** your position for a row is computed from that bar's data and executed at the
+  *next* bar's open. Equity is marked at each open. There is no way to earn this bar's move from this
+  bar's signal. (`tests\test_engine.py` proves this with a planted price jump.)
 - **Costs:** Rs 20 per order plus 0.05% slippage on the traded value, charged on every position change.
   Over-trading shows up immediately in the scorecard.
 - **No leverage:** positions are clipped to [-1, 1]; NaN means flat.
@@ -57,15 +78,18 @@ Useful flags: `--long-only` (no shorts), `--start 2026-01-01 --end 2026-06-30` (
 **Total return** is final portfolio value divided by starting value, minus one, after all costs.
 
 **CAGR** (compound annual growth rate) converts total return to a per-year rate using the number of
-calendar days in the test, so a 3-month and a 12-month test are comparable. On short windows it
-exaggerates both good and bad results.
+bars in the test and the bars per year for that timeframe (246 for daily; for intraday, the median
+number of bars per trading day times 246), so a 3-month and a 12-month test are comparable. On short
+windows it exaggerates both good and bad results.
 
 **Max drawdown** is the worst peak-to-trough fall of the portfolio value, in percent. It answers "how much
 would I have been down at the worst moment if I started at the previous high?".
 
-**Sharpe ratio** is the mean daily portfolio return divided by the standard deviation of daily returns,
-multiplied by sqrt(252) to annualise it (risk-free rate taken as 0). Roughly: return per unit of
-wobble. Above 1 over a year is good; above 3 on daily stock data is suspicious.
+**Sharpe ratio** is the mean per-bar portfolio return divided by the standard deviation of per-bar
+returns, multiplied by sqrt(bars per year) to annualise it (risk-free rate taken as 0; the scorecard
+prints the factor used). Roughly: return per unit of wobble. Above 1 over a year is good; above 3 on
+daily stock data is suspicious. Intraday Sharpe values swing more in both directions because a small
+consistent per-bar edge (or cost) gets multiplied by sqrt(6,000+).
 
 **Win rate** is the share of closed round-trip trades (entry to exit on one symbol) that made money after
 costs. A low win rate is fine if winners are much bigger than losers.
@@ -103,10 +127,19 @@ shorting cash equities overnight is not possible for retail investors (you would
 
 ## Data
 
-`data\daily\_SOURCE.txt` says where the prices came from. `SYNTHETIC` means random walks generated by
-`scripts\make_synthetic.py` for testing the pipeline; `NUBRA-PROD` means real NSE daily candles fetched
-with `scripts\fetch_data.py` through the Nubra Python SDK (presenter only, needs a login). Both produce
-identical file names and columns (`date,open,high,low,close,volume`), so nothing else changes.
+```
+data\daily\<SYMBOL>.csv        1d, 2025-07-01 .. 2026-06-30         (public)
+data\1h\<SYMBOL>.csv.gz        1h,  2025-09-04 .. 2026-06-30        (public; pandas reads .gz directly)
+data\30m\ data\15m\ data\5m\   same layout                           (public)
+data\1m\<SYMBOL>.csv.gz        1m, ~75,000 rows per symbol           (NOT in git: shipped as a separate zip,
+                                                                       unzip into data\1m\)
+data\hidden\...                presenter only, git-ignored: same symbols to 2026-09-30, incl. hidden\<tf>\
+```
+Columns are `date,open,high,low,close,volume`; intraday files have a leading `datetime` column (IST bar
+start). Every folder's `_SOURCE.txt` says where the prices came from: `SYNTHETIC` means random walks
+generated by `scripts\make_synthetic.py` for testing the pipeline; `NUBRA-PROD` means real NSE candles
+fetched with `scripts\fetch_data.py --interval <tf>` through the Nubra Python SDK (presenter only,
+needs a login). Both produce identical file names and columns, so nothing else changes.
 
 ## Bring your strategy to the repo
 
@@ -124,11 +157,11 @@ https://github.com/aaryan-say/nifty-options-delta-neutral-backtest.
 ## Repo layout
 
 ```
-backtest.py              the engine (one file, ~300 lines, read it)
+backtest.py              the engine (one file, ~350 lines, read it)
 PROMPT.md                paste into ChatGPT with your idea
-strategies/              ma_crossover.py, zscore_meanrev.py, breakout.py, community/
-data/daily/              <SYMBOL>.csv public data + _SOURCE.txt
-data/hidden/             presenter only, git-ignored (out-of-sample)
+strategies/              ma_crossover.py, zscore_meanrev.py, breakout.py, first_green_15m.py, community/
+data/daily/, data/<tf>/  public data per timeframe + _SOURCE.txt (data/1m/ ships as a zip)
+data/hidden/             presenter only, git-ignored (out-of-sample, per timeframe)
 scripts/                 make_synthetic.py, fetch_data.py (presenter), universe.py
 tests/test_engine.py     python tests\test_engine.py   or   python -m pytest
 results/                 created on each run: <name>.png, <name>_symbols.csv
