@@ -1,0 +1,13 @@
+# presenter-only out-of-sample data (never commit)
+data/hidden/
+
+# generated at run time
+results/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# secrets and Nubra session files (fetch_data.py only; students never need these)
+.env
+auth_data.db*
