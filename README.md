@@ -7,9 +7,51 @@ with realistic costs and next-day execution, and prints a scorecard you can subm
 Needs only Python 3.10+ and `pip install pandas matplotlib`. Works on Windows, mac and Linux.
 No account, no login, no API key: the price data is already in the repo.
 
+## The flow in one picture
+
+```
+ your idea (English)  ->  PROMPT.md + ChatGPT  ->  strategies\mine.py  ->  python backtest.py strategies\mine.py
+                                                                                |
+            52 NSE stocks, real candles, costs, next-bar fills   <---------------+
+                                                                                |
+                                                                                v
+                              scorecard + equity chart + the SUBMIT line  ->  submit in Showdown
+                                                                                |
+                                                                                v
+                         presenter re-runs the top entries on hidden Jul-Sep data  ->  winner
+```
+
+One function is all you write:
+
+```python
+TIMEFRAME = "1d"                      # or "1h", "30m", "15m", "5m", "1m"
+
+def strategy(df):                     # df = one stock's candles, oldest first
+    fast = df["close"].rolling(20).mean()
+    slow = df["close"].rolling(50).mean()
+    return (fast > slow).astype(int)  # +1 long, 0 flat, -1 short, one value per bar
+```
+
+## What data you get
+
+| Folder | Bars | Per stock | Range | Size |
+|---|---|---|---|---|
+| `data\daily` | 1 day | ~246 | 1 Jul 2025 - 30 Jun 2026 | 0.6 MB |
+| `data\1h` | 1 hour | ~1,400 | 4 Sep 2025 - 30 Jun 2026 | 1.5 MB |
+| `data\30m` | 30 min | ~2,800 | same | 2.4 MB |
+| `data\15m` | 15 min | ~5,000 | same | 4.1 MB |
+| `data\5m` | 5 min | ~15,000 | same | 11 MB |
+| `data\1m` | 1 min | ~74,000 | same | 46 MB, separate download (not in the clone) |
+
+52 symbols: the NIFTY 50 constituents plus the NIFTY index (never traded, available as a `nifty_close`
+helper column). Prices in rupees, split-adjusted, regular session only (09:15-15:29 IST), fetched from the
+Nubra API on 8 Oct 2026 and cleaned (see "Data cleaning" at the end). July-September 2026 is held back
+for judging and is not in the repo.
+
 ## Quick start (4 steps)
 
-1. **Get the repo.** `git clone <repo-url>` or click *Code -> Download ZIP* on GitHub and unzip it.
+1. **Get the repo.** `git clone https://github.com/aaryan-say/bmsit-quant-101.git` then
+   `cd bmsit-quant-101`, or click *Code -> Download ZIP* on GitHub and unzip it.
 2. **Install.** Open a terminal in the folder and run `pip install pandas matplotlib`
    (Windows: or just double-click `run.bat`, which creates a virtual env, installs, and runs the example).
 3. **Prompt.** Open `PROMPT.md`, copy everything below the first `-----` into ChatGPT, replace the last
@@ -46,7 +88,8 @@ most ideas. Two facts to keep in mind:
 ## The competition
 
 - **Time box: 25 minutes** from "go". Iterate as many times as you like inside it.
-- **Submit** your best SUBMIT line plus your `.py` file here: **[Google Form link - TBD]**.
+- **Submit** your best SUBMIT line plus the text of your `.py` file in the **Showdown app** (the same
+  link you used for the quizzes, "Strategy Showdown" round). You can resubmit; the latest entry counts.
 - **Judged on out-of-sample Sharpe.** The data you have ends 2026-06-30. The presenter holds a hidden
   set for **July to September 2026**. The top 5 by submitted Sharpe are re-run with
   `python backtest.py strategies\x.py --data data\hidden` (same timeframe as the file declares) and

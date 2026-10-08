@@ -4,6 +4,8 @@ Copy from `-----` to the end of this file, paste it into ChatGPT (or any LLM), r
 with YOUR strategy idea, save the reply as `strategies\<short_name>.py`, and run
 `python backtest.py strategies\<short_name>.py`.
 
+The engine and the data live at https://github.com/aaryan-say/bmsit-quant-101 (README has the full flow).
+
 -----
 
 You are writing ONE Python file for a small, strict daily-bar backtesting engine. Follow this contract
