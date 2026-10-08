@@ -1,0 +1,8 @@
+NUBRA-PROD
+fetched: 2026-10-08 22:28
+by: scripts/fetch_data.py (Nubra Python SDK, historical_data 15m)
+interval: 15m
+range: 2025-09-04 to 2026-06-30
+symbols: 52
+public set (students)
+Prices in rupees (paise/100), unadjusted; timestamps are IST (bar start).

@@ -60,6 +60,11 @@ def load_data(data_dir):
         key = "date"
         if "datetime" in df.columns:                       # intraday: one row per bar, date = trading day
             df["datetime"] = pd.to_datetime(df["datetime"]); key = "datetime"; need = ["datetime"] + need
+            # Regular NSE session only: the API also returns pre-open (08:15 / 09:00 / 09:07) and
+            # post-close (15:40-16:00) bars. They are not tradable bars, so drop them here as well
+            # (the shipped files are already cleaned; this guards fresh fetches).
+            minutes = df["datetime"].dt.hour * 60 + df["datetime"].dt.minute
+            df = df[(minutes >= 9 * 60 + 15) & (minutes < 15 * 60 + 30)]
         df = df[need].drop_duplicates(key).sort_values(key).reset_index(drop=True)
         frames[os.path.basename(path).split(".csv")[0]] = df
     if not frames:
@@ -224,8 +229,11 @@ def run_backtest(strategy, frames, name="strategy", long_only=False, start=None,
     if busted:
         print(f"WARNING: {len(busted)} symbol sleeve(s) went to zero (costs/losses ate the capital): "
               f"{', '.join(busted[:6])}{'...' if len(busted) > 6 else ''}. Trade less.")
-    equity = pd.DataFrame(curves).ffill().sum(axis=1).sort_index()
-    benchmark = pd.DataFrame(bench).ffill().sum(axis=1).sort_index()
+    # Symbols can start on different bars (intraday). A sleeve that has not started yet is still
+    # cash, so back-fill it with its first value instead of counting it as zero (which would make
+    # the portfolio "grow" as sleeves appear).
+    equity = pd.DataFrame(curves).sort_index().ffill().bfill().sum(axis=1)
+    benchmark = pd.DataFrame(bench).sort_index().ffill().bfill().sum(axis=1)
     per_symbol = pd.DataFrame(rows).sort_values("return_pct", ascending=False).reset_index(drop=True)
     sc = {"strategy": name, "timeframe": timeframe, **metrics(equity, bpy),
           "benchmark_return_pct": metrics(benchmark, bpy)["total_return_pct"], "trades": len(all_trades),
