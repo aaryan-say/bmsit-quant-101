@@ -38,6 +38,10 @@ def clean_frame(df, dclose):
     c = df["close"].astype(float)
     prev, nxt = c.shift(1), c.shift(-1)
     spike = ((c / prev - 1).abs() > 0.4) & ((c / nxt - 1).abs() > 0.4)
+    # runs of consecutive bad bars escape the neighbour rule: also drop any bar whose close is more
+    # than 40% away from that DAY's median close (a real stock does not move 40% intraday and come back)
+    day_median = c.groupby(df["date"]).transform("median")
+    spike = spike | ((c / day_median - 1).abs() > 0.4)
     df = df[~spike.fillna(False)].copy()
     # a spike can also sit in the OPEN alone (close normal): the engine fills at opens, so fix it
     bad_open = (df["open"] / df["close"] - 1).abs() > 0.4
