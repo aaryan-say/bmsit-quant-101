@@ -18,9 +18,10 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 INDEX_SYMBOLS = {"NIFTY"}            # never traded; used as benchmark line + helper column nifty_close
 TIMEFRAMES = ["1d", "1h", "30m", "15m", "5m", "1m"]
 TRADING_DAYS_PER_YEAR = 246          # NSE; intraday bars/year = median bars per day x 246
-CAPITAL = 1_000_000.0                # Rs 10 lakh split equally across symbols
-COST_PER_ORDER = 20.0                # Rs per order (every position change is one order)
-SLIPPAGE = 0.0005                    # 0.05% of traded value on every position change
+CAPITAL = 5_200_000.0                # Rs 52 lakh split equally: Rs 1 lakh per symbol (52 symbols)
+COST_PER_ORDER = 20.0                # brokerage CAP per order, Rs (discount-broker style: Rs 20 or 0.03%, whichever is lower)
+BROKERAGE_PCT = 0.0003               # 0.03% of traded value per order, capped at COST_PER_ORDER
+SLIPPAGE = 0.0003                    # 0.03% of traded value on every position change (liquid NIFTY 50 names)
 
 
 class StrategyError(Exception):
@@ -168,7 +169,9 @@ def simulate(df, held, capital, cost_per_order=COST_PER_ORDER, slippage=SLIPPAGE
         if hi != prev:                                             # we trade at this bar's open
             closing = prev != 0.0 and (hi == 0.0 or (hi > 0) != (prev > 0))
             opening = hi != 0.0 and (prev == 0.0 or (hi > 0) != (prev > 0))
-            eq -= cost_per_order + slippage * abs(hi - prev) * eq       # Rs 20 + 0.05% of traded value
+            traded = abs(hi - prev) * eq                               # rupees changing hands at this bar
+            brokerage = min(cost_per_order, BROKERAGE_PCT * traded)    # Rs 20 or 0.03%, whichever is lower
+            eq -= brokerage + slippage * traded                        # + 0.05% slippage on the traded value
             if closing:
                 trades.append(eq - entry_eq)
             if opening:

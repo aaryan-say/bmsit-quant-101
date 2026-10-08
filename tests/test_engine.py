@@ -91,7 +91,7 @@ def test_costs_reduce_returns():
     gross = run(strat, data(), cost_per_order=0, slippage=0)
     net = run(strat, data())
     assert net["trades"] == gross["trades"]
-    assert net["total_return_pct"] < gross["total_return_pct"] - 0.5     # hundreds of trades cost real money
+    assert net["total_return_pct"] < gross["total_return_pct"] - 0.1     # hundreds of trades cost real money
 
 
 # ------------------------------------------------------------------ 4. look-ahead

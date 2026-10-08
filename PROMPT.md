@@ -28,7 +28,7 @@ the file. Any indicator, any rule, any timeframe is fine as long as it fits the 
 The file may declare `TIMEFRAME = "1d"` (default if absent), `"1h"`, `"30m"`, `"15m"`, `"5m"` or `"1m"`.
 Use daily unless the idea is genuinely intraday (opening range, time-of-day effects, "flat by the close").
 Daily data covers about 250 trading days; intraday data starts 2025-09-04 (about 200 days). Intraday means
-far more bars, so far more trades, and every trade costs Rs 20 + 0.05%: an idea that flips every bar loses.
+far more bars, so far more trades, and every trade costs brokerage (Rs 20 or 0.03%, whichever is lower) + 0.03% slippage: an idea that flips every bar loses.
 
 ## Data you receive
 `strategy(df)` is called once per stock (NIFTY 50 names) with a pandas DataFrame `df` sorted by time
@@ -61,7 +61,7 @@ you want to hold for that stock after that day's close:
 - NaN is treated as flat (0), so NaNs from rolling warm-up are fine.
 - The engine executes your position at the NEXT bar's open (next day for daily, next candle for
   intraday). You never need to shift the result yourself.
-- Every symbol gets equal capital; costs are Rs 20 per order + 0.05% slippage per position change, so
+- Every symbol gets equal capital; costs are brokerage (Rs 20 or 0.03%, whichever lower) + 0.03% slippage per position change, so
   flipping every bar will lose money. Fewer, better trades win.
 
 ## Hard rules

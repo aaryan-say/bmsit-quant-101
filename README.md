@@ -81,8 +81,8 @@ most ideas. Two facts to keep in mind:
 - Intraday data starts **2025-09-04** (that is as far back as the data source keeps sub-daily candles),
   so you get about 200 days instead of 250.
 - More bars = more trades = costs matter much more. A 15-minute strategy that enters and exits daily on
-  all 52 stocks makes ~5,000 round trips in ten months; at Rs 20 + 0.05% a side that is a large chunk of
-  a Rs 19,000 sleeve. If the scorecard warns that sleeves "went to zero", costs ate the capital.
+  all 52 stocks makes ~5,000 round trips in ten months; at Rs 20-or-0.03% brokerage + 0.03% slippage a side that adds up fast on
+  a Rs 1,00,000 sleeve. If the scorecard warns that sleeves "went to zero", costs ate the capital.
   See `strategies\first_green_15m.py` for an intraday example that shows exactly this.
 
 ## The competition
@@ -104,12 +104,12 @@ most ideas. Two facts to keep in mind:
 - **Universe:** every `<SYMBOL>.csv` in the timeframe's folder (NIFTY 50 constituents; daily OHLCV for
   one year to 2026-06-30, intraday from 2025-09-04). `NIFTY` is the index: never traded, drawn as a
   reference line, and offered to your strategy as the optional `nifty_close` column.
-- **Equal weight:** Rs 10,00,000 split equally across symbols; each symbol's sleeve compounds on its own.
+- **Equal weight:** Rs 52,00,000 split equally across symbols (Rs 1,00,000 each); each symbol's sleeve compounds on its own.
   A sleeve stops at zero (it cannot go negative); the scorecard warns when that happens.
 - **Next-bar execution:** your position for a row is computed from that bar's data and executed at the
   *next* bar's open. Equity is marked at each open. There is no way to earn this bar's move from this
   bar's signal. (`tests\test_engine.py` proves this with a planted price jump.)
-- **Costs:** Rs 20 per order plus 0.05% slippage on the traded value, charged on every position change.
+- **Costs:** brokerage of Rs 20 or 0.03% of the traded value per order, whichever is lower (how discount brokers charge intraday), plus 0.03% slippage, charged on every position change.
   Over-trading shows up immediately in the scorecard.
 - **No leverage:** positions are clipped to [-1, 1]; NaN means flat.
 - **Guards:** the strategy gets a *copy* of the data (mutating it is harmless), must return a Series on
@@ -159,7 +159,7 @@ the benchmark your strategy has to beat.
    the index. *Engine:* does **not** address it; the universe is the current NIFTY 50. Treat absolute
    returns as optimistic.
 4. **Costs and slippage:** ignoring them makes high-frequency flipping look profitable. *Engine:* charges
-   Rs 20 per order plus 0.05% slippage on every change; the tests confirm costs reduce returns.
+   Rs 20-or-0.03% brokerage plus 0.03% slippage on every change; the tests confirm costs reduce returns.
    Real costs can be higher (impact, taxes, STT); real fills can be worse than the open.
 5. **Data snooping:** trying 50 ideas and reporting the best one, which would have beaten the benchmark
    by chance. *Engine:* cannot see what you tried. The hidden set and the 10-trade minimum reduce (not
