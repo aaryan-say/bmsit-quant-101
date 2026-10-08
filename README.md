@@ -167,3 +167,20 @@ tests/test_engine.py     python tests\test_engine.py   or   python -m pytest
 results/                 created on each run: <name>.png, <name>_symbols.csv
 run.bat                  Windows one-click: venv + install + run
 ```
+
+## Data cleaning (what was done to the intraday files)
+
+The raw intraday feed had two problems the daily series does not: a handful of spike bars with
+garbage prices (for example MARUTI at Rs 5.50 on 2025-11-06 10:00, and a batch of bad opens at
+09:15 on 2026-01-05), and no adjustment for corporate actions (KOTAKBANK's split on 2026-01-14,
+TRENT's on 2026-06-04) while the daily series is adjusted. `scripts\clean_data.py` fixes both:
+
+- drops bars whose close is more than 40% away from both neighbours; repairs opens, highs and lows
+  that are more than 40% away from the bar's own close;
+- rescales every intraday day so its last close matches the adjusted daily close whenever the two
+  differ by more than 3% (volume scaled the other way);
+- keeps only the regular session, 09:15 to 15:29 IST (the feed also returns pre-open and
+  post-close bars). `backtest.py` applies the same session filter when it loads data.
+
+Run it after any fresh `fetch_data.py` for an intraday interval. Sanity check used: an always-long
+strategy on 15m data must return about the same as buy-and-hold of the daily series.
