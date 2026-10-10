@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quant Engineering 101 · BMSIT</title>
+<meta name="description" content="Slides, PDFs and photos from Quant Engineering 101, a full-day hands-on workshop on algorithmic trading at BMSIT, Bengaluru, on 9 October 2026.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Quant Engineering 101 · BMSIT">
+<meta property="og:description" content="A full-day, hands-on workshop on algorithmic trading: see it, build it, test it. Slides, PDFs and photos.">
+<meta property="og:image" content="https://aaryan-say.github.io/bmsit-quant-101/img/group.jpg">
+<meta name="theme-color" content="#050805">
+<style>
+@font-face{font-family:'JetBrains Mono';font-weight:500;font-display:swap;src:url(fonts/JetBrainsMono-0.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'JetBrains Mono';font-weight:500;font-display:swap;src:url(fonts/JetBrainsMono-1.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Orbitron';font-weight:700 900;font-display:swap;src:url(fonts/Orbitron-2.woff2) format('woff2')}
+@font-face{font-family:'Space Grotesk';font-weight:400 700;font-display:swap;src:url(fonts/SpaceGrotesk-3.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Space Grotesk';font-weight:400 700;font-display:swap;src:url(fonts/SpaceGrotesk-4.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --bg:#050805; --panel:#0c140c; --panel2:#101b10; --line:#1f3a1f;
+  --neon:#39ff14; --neon-soft:#8dff7a; --neon-dim:#1f7a0c;
+  --ink:#f2fff0; --ink-dim:#9db59d; --muted:#6f8f6f;
+  --h:'Orbitron','Segoe UI',system-ui,sans-serif;
+  --b:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+  --m:'JetBrains Mono',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);color-scheme:dark}
+body{background:radial-gradient(1200px 600px at 50% -10%,rgba(57,255,20,.10),transparent 70%),var(--bg);color:var(--ink);font-family:var(--b);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 32px}
+.kicker{font-family:var(--m);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon)}
+.g{color:var(--neon);text-shadow:0 0 18px rgba(57,255,20,.4)}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0}
+.top .brand{font-family:var(--m);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.top a{font-family:var(--m);font-size:13px;color:var(--neon);text-decoration:none;border:1px solid rgba(57,255,20,.4);padding:8px 14px;border-radius:999px;white-space:nowrap}
+.top a:hover{background:rgba(57,255,20,.08)}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero h1{font-family:var(--h);font-weight:900;font-size:clamp(38px,7.2vw,88px);line-height:1.02;letter-spacing:.02em;color:var(--neon);text-shadow:0 0 28px rgba(57,255,20,.45);margin:18px 0 20px}
+.hero h1 span{color:var(--ink);text-shadow:none}
+.hero .tag{font-size:clamp(19px,2.3vw,25px);color:var(--ink);max-width:760px}
+.hero .lede{color:var(--ink-dim);max-width:720px;margin-top:14px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--m);font-size:14px;font-weight:500;text-decoration:none;padding:12px 18px;border-radius:10px;border:1px solid var(--neon);transition:background .15s,box-shadow .15s}
+.btn.solid{background:var(--neon);color:#021}
+.btn.solid:hover{box-shadow:0 0 22px rgba(57,255,20,.55)}
+.btn.ghost{color:var(--neon)}
+.btn.ghost:hover{background:rgba(57,255,20,.08)}
+.btn:focus-visible,.top a:focus-visible{outline:2px solid var(--neon-soft);outline-offset:3px}
+
+/* photo */
+.photo{margin:8px 0 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
+.photo img{display:block;width:100%;height:auto;aspect-ratio:1280/569;object-fit:cover}
+.photo figcaption{font-family:var(--m);font-size:12px;color:var(--muted);padding:10px 14px;border-top:1px solid var(--line)}
+
+/* sections */
+section{padding:64px 0 0}
+section > h2{font-family:var(--h);font-weight:900;font-size:clamp(24px,3.4vw,36px);letter-spacing:.02em;margin:10px 0 26px}
+
+/* session cards */
+.sessions{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{display:flex;flex-direction:column;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:26px 24px 22px;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:rgba(57,255,20,.55);box-shadow:0 0 26px rgba(57,255,20,.12)}
+.card .num{font-family:var(--m);font-size:13px;letter-spacing:.16em;color:var(--muted)}
+.card h3{font-family:var(--h);font-weight:900;font-size:30px;color:var(--neon);text-shadow:0 0 16px rgba(57,255,20,.35);margin:8px 0 4px}
+.card .sub{color:var(--ink);font-weight:500;margin-bottom:14px}
+.card ul{list-style:none;color:var(--ink-dim);font-size:15.5px;display:grid;gap:8px;margin-bottom:22px}
+.card li{padding-left:18px;position:relative}
+.card li::before{content:'';position:absolute;left:0;top:.62em;width:7px;height:7px;border-radius:2px;background:var(--neon-dim)}
+.card .meta{font-family:var(--m);font-size:12px;color:var(--muted);margin-top:auto;margin-bottom:14px}
+.card .act{display:flex;flex-wrap:wrap;gap:10px}
+.card .btn{font-size:13px;padding:10px 14px}
+
+.how{margin-top:18px;font-family:var(--m);font-size:13px;color:var(--muted)}
+.how kbd{font-family:var(--m);font-size:12px;color:var(--ink);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--panel)}
+
+/* gallery */
+.gallery{display:grid;grid-template-columns:1.1fr 1fr 1fr;grid-template-rows:auto auto;gap:14px}
+.gallery figure{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.gallery figure:first-child{grid-row:1 / span 2}
+.gallery img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:3/2}
+.gallery figure:first-child img{aspect-ratio:auto}
+.gallery figcaption{position:absolute;left:10px;bottom:10px;font-family:var(--m);font-size:12px;color:var(--neon);background:rgba(0,0,0,.72);padding:4px 10px;border-radius:7px}
+
+/* links */
+.links{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.link{display:block;text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel);transition:border-color .2s}
+.link:hover{border-color:rgba(57,255,20,.55)}
+.link b{display:block;font-family:var(--h);font-size:16px;color:var(--ink);letter-spacing:.02em;margin-bottom:6px}
+.link span{display:block;color:var(--ink-dim);font-size:15px}
+.link code{display:block;font-family:var(--m);font-size:12px;color:var(--neon);margin-top:12px;word-break:break-all}
+
+footer{margin-top:72px;border-top:1px solid var(--line);padding:28px 0 40px;color:var(--muted);font-size:14px;display:grid;gap:8px}
+footer .disc{font-family:var(--m);font-size:12px;line-height:1.6}
+
+@media (max-width:900px){
+  .sessions,.links{grid-template-columns:1fr}
+  .gallery{grid-template-columns:1fr 1fr}
+  .gallery figure:first-child{grid-row:auto;grid-column:1 / span 2}
+  .gallery figure:first-child img{aspect-ratio:3/2}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .top .brand{display:none}
+  .hero{padding-top:28px}
+  .gallery{grid-template-columns:1fr}
+  .gallery figure:first-child{grid-column:auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">DataVerse × Nubra · BMSIT</div>
+    <a href="https://github.com/aaryan-say/bmsit-quant-101">Workshop code on GitHub ↗</a>
+  </header>
+
+  <div class="hero">
+    <div class="kicker">9 October 2026 · BMS Institute of Technology and Management, Bengaluru</div>
+    <h1>QUANT <span>ENGINEERING</span> 101</h1>
+    <p class="tag">How machines took over the markets, and how you can build with them.</p>
+    <p class="lede">A full-day, hands-on workshop for engineering students, in three sessions: how markets and market data work, building with a live trading API, and testing strategies on data nobody had seen. These are the slides from the day.</p>
+    <div class="cta">
+      <a class="btn solid" href="session1.html#1">Start with Session 1 →</a>
+      <a class="btn ghost" href="#sessions">All three sessions</a>
+    </div>
+  </div>
+
+  <figure class="photo">
+    <img src="img/group.jpg" alt="The students and the presenter in the computer lab at BMSIT after the workshop" width="1280" height="569">
+    <figcaption>The room · Quant Engineering 101, BMSIT, 9 October 2026</figcaption>
+  </figure>
+
+  <section id="sessions">
+    <div class="kicker">The slides</div>
+    <h2>See it. Build it. <span class="g">Test it.</span></h2>
+    <div class="sessions">
+      <article class="card">
+        <div class="num">SESSION 01</div>
+        <h3>See it</h3>
+        <p class="sub">How machines took over the markets</p>
+        <ul>
+          <li>From shouting on trading floors to screens to machines</li>
+          <li>How a machine reads the market: candles, order book, option chain, live streams</li>
+          <li>Open-source tools to build on</li>
+        </ul>
+        <div class="meta">52 slides · PDF 9 MB</div>
+        <div class="act">
+          <a class="btn solid" href="session1.html#1">Open slides</a>
+          <a class="btn ghost" href="pdf/Quant-Engineering-101-Session-1-See-it.pdf" download>Download PDF</a>
+        </div>
+      </article>
+      <article class="card">
+        <div class="num">SESSION 02</div>
+        <h3>Build it</h3>
+        <p class="sub">From idea to order</p>
+        <ul>
+          <li>Sandbox (UAT) versus live trading (PROD)</li>
+          <li>An options strategy written live with ChatGPT and run in the sandbox, with no real money</li>
+          <li>Build your own stock screener and a dashboard for it</li>
+        </ul>
+        <div class="meta">25 slides · PDF 4.5 MB</div>
+        <div class="act">
+          <a class="btn solid" href="session2.html#1">Open slides</a>
+          <a class="btn ghost" href="pdf/Quant-Engineering-101-Session-2-Build-it.pdf" download>Download PDF</a>
+        </div>
+      </article>
+      <article class="card">
+        <div class="num">SESSION 03</div>
+        <h3>Test it</h3>
+        <p class="sub">Does it actually work?</p>
+        <ul>
+          <li>Backtesting basics: CAGR, drawdown and the Sharpe ratio</li>
+          <li>Five ways a backtest lies, each with a real example</li>
+          <li>A strategy competition judged on three months of unseen data</li>
+        </ul>
+        <div class="meta">28 slides · PDF 5 MB</div>
+        <div class="act">
+          <a class="btn solid" href="session3.html#1">Open slides</a>
+          <a class="btn ghost" href="pdf/Quant-Engineering-101-Session-3-Test-it.pdf" download>Download PDF</a>
+        </div>
+      </article>
+    </div>
+    <p class="how">In the slides: click or press <kbd>→</kbd> to go forward, <kbd>←</kbd> to go back, <kbd>F</kbd> for full screen, <kbd>G</kbd> for the slide list. On a phone, tap the right side to go forward and the left side to go back.</p>
+  </section>
+
+  <section>
+    <div class="kicker">The day in pictures</div>
+    <h2>In the room</h2>
+    <div class="gallery">
+      <figure><img src="img/presenting.jpg" alt="The presenter at the front of the lab with a Session 1 slide on the big screen" loading="lazy"><figcaption>Session 1 · See it</figcaption></figure>
+      <figure><img src="img/coding.jpg" alt="Students writing code on their laptops in the lab" loading="lazy"><figcaption>Session 2 · Build it</figcaption></figure>
+      <figure><img src="img/desks.jpg" alt="The presenter helping students at their desks" loading="lazy"><figcaption>At the desks</figcaption></figure>
+      <figure><img src="img/screens.jpg" alt="The screener build on the students' screens" loading="lazy"><figcaption>The screener build</figcaption></figure>
+      <figure><img src="img/host.jpg" alt="The opening of the workshop, with the faculty on the dais" loading="lazy"><figcaption>The opening</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Build it yourself</div>
+    <h2>The code</h2>
+    <div class="links">
+      <a class="link" href="https://github.com/aaryan-say/bmsit-quant-101">
+        <b>Workshop kit</b>
+        <span>The backtester, the AI prompt the students used, example strategies and the finished Session 2 screener.</span>
+        <code>github.com/aaryan-say/bmsit-quant-101</code>
+      </a>
+      <a class="link" href="https://github.com/NubraAPI/nubra-python-sdk">
+        <b>Nubra Python SDK</b>
+        <span>The SDK used for the market data and the sandbox orders in the workshop.</span>
+        <code>github.com/NubraAPI/nubra-python-sdk</code>
+      </a>
+      <a class="link" href="https://github.com/aaryan-say/nifty-options-delta-neutral-backtest">
+        <b>Options backtest engine</b>
+        <span>A backtester for NIFTY delta-neutral options strategies, shown in Session 3.</span>
+        <code>github.com/aaryan-say/nifty-options-delta-neutral-backtest</code>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div>Organised by DataVerse, BMSIT, in collaboration with Nubra. Slides by Aryan.</div>
+    <div class="disc">Educational purposes only. Not investment advice. Trading involves risk of loss. Everything in the workshop ran in a sandbox with no real money. Backtest results are hypothetical and do not predict future returns.</div>
+  </footer>
+
+</div>
+</body>
+</html>

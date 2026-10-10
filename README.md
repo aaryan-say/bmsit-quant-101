@@ -7,6 +7,9 @@ with realistic costs and next-day execution, and prints a scorecard you can subm
 Needs only Python 3.10+ and `pip install pandas matplotlib`. Works on Windows, mac and Linux.
 No account, no login, no API key: the price data is already in the repo.
 
+**Slides from the workshop (all three sessions, with PDFs and photos):
+[aaryan-say.github.io/bmsit-quant-101](https://aaryan-say.github.io/bmsit-quant-101/)**. The site is the `docs/` folder.
+
 ## The flow in one picture
 
 ```
